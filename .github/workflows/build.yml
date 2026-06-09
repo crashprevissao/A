@@ -1,33 +1,7 @@
 name: Compilar MarauderApp APK
 
-sobre :
-  workflow_dispatch
-  
-function conectar() {
-    if (window.serial) {
-        // 1. Solicita a permissão nativa do Android para usar o USB
-        window.serial.requestPermission(
-            function success() {
-                // 2. Se o usuário permitir, abrimos a porta serial
-                window.serial.open({ baudRate: 115200 }, 
-                    function() { 
-                        alert("Permissão concedida! Conectado com sucesso."); 
-                    }, 
-                    function(err) { 
-                        alert("Erro ao abrir a porta serial: " + err); 
-                    }
-                );
-            }, 
-            function error(err) {
-                // 3. Se o usuário negar ou der erro
-                alert("Permissão negada ou nenhum dispositivo USB encontrado: " + err);
-            }
-        );
-    } else {
-        alert("Erro: O plugin Serial não foi carregado corretamente.");
-    }
-}
-
+on:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -57,7 +31,7 @@ jobs:
           echo "Instalando plugins..."
           cordova plugin add cordova-plugin-serial
           
-          echo "Aplicando patch de compatibilidade para Android 12+..."
+          echo "Aplicando patch de compatibilidade..."
           if [ -f "plugins/cordova-plugin-serial/src/android/Serial.java" ]; then
             sed -i 's/PendingIntent.getBroadcast(context, 0, intent, 0)/PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)/g' plugins/cordova-plugin-serial/src/android/Serial.java
             echo "Patch aplicado com sucesso."
@@ -66,7 +40,7 @@ jobs:
             exit 1
           fi
 
-          echo "Configurando interface com 7 menus..."
+          echo "Configurando interface..."
           cat << 'EOF' > www/index.html
           <!DOCTYPE html>
           <html>
@@ -78,28 +52,18 @@ jobs:
                   body { font-family: sans-serif; padding: 12px; background: #111; color: #fff; margin: 0; box-sizing: border-box; }
                   h1 { text-align: center; color: #0f0; margin: 10px 0; font-size: 22px; text-shadow: 0 0 5px #0f0; }
                   h2 { text-align: center; color: #0f0; font-size: 16px; margin-bottom: 15px; }
-                  
-                  button { width: 100%; padding: 14px; margin-bottom: 8px; font-size: 15px; background: #222; border: 1px solid #444; color: #fff; border-radius: 6px; font-weight: bold; transition: background 0.2s; }
-                  button:active { background: #444; }
-                  
+                  button { width: 100%; padding: 14px; margin-bottom: 8px; font-size: 15px; background: #222; border: 1px solid #444; color: #fff; border-radius: 6px; font-weight: bold; }
                   .btn-connect { background: #004400; border-color: #0f0; margin-bottom: 20px; }
-                  .btn-connect:active { background: #006600; }
-                  
                   .btn-back { background: #440000; border-color: #f00; margin-top: 15px; }
-                  .btn-back:active { background: #660000; }
-                  
                   .menu-screen { display: none; }
                   #main-menu { display: block; }
-                  
                   .grid { display: flex; flex-wrap: wrap; justify-content: space-between; }
                   .grid button { width: 49%; }
               </style>
           </head>
           <body>
-
               <h1>MARAUDER INTERFACE</h1>
               <button class="btn-connect" onclick="conectar()">⚡ CONECTAR USB ⚡</button>
-
               <div id="main-menu" class="menu-screen">
                   <button onclick="showScreen('menu-bluetooth')">🔹 1. Bluetooth</button>
                   <button onclick="showScreen('menu-ataques')">💥 2. Comandos de Ataque</button>
@@ -109,102 +73,27 @@ jobs:
                   <button onclick="showScreen('menu-gps')">📍 6. Comandos de GPS</button>
                   <button onclick="showScreen('menu-sistema')">⚙️ 7. Sistema e Configuração</button>
               </div>
-
               <div id="menu-bluetooth" class="menu-screen">
                   <h2>1. BLUETOOTH</h2>
                   <button onclick="enviar('sniffbt')">Sniff Bluetooth</button>
                   <button onclick="enviar('jambt')">Jam Bluetooth</button>
                   <button class="btn-back" onclick="showScreen('main-menu')">Voltar</button>
               </div>
-
               <div id="menu-ataques" class="menu-screen">
                   <h2>2. COMANDOS DE ATAQUE</h2>
                   <button onclick="enviar('evilportal -c start')">EvilPortal Iniciar</button>
-                  <button onclick="enviar('evilportal sethtml ' + prompt('Nome do arquivo HTML (ex: index.html):'))">EvilPortal Definir HTML</button>
+                  <button onclick="enviar('evilportal sethtml ' + prompt('HTML:'))">EvilPortal Definir HTML</button>
                   <button onclick="enviar('attack -t beacon')">Beacon Attack</button>
                   <button onclick="enviar('attack -t deauth')">Deauth Attack</button>
-                  <button onclick="enviar('attack -t probe')">Probe Attack</button>
-                  <button onclick="enviar('attack -t rickroll')">Rickroll Attack</button>
-                  <button style="background:#550000; border-color:#ff0000;" onclick="enviar('stopattack')">🛑 PARAR ATAQUE</button>
+                  <button onclick="enviar('stopattack')">🛑 PARAR ATAQUE</button>
                   <button class="btn-back" onclick="showScreen('main-menu')">Voltar</button>
               </div>
-
-              <div id="menu-selecao" class="menu-screen">
-                  <h2>3. SELEÇÃO E LISTAGEM</h2>
-                  <button onclick="enviar('list -s')">Mostrar Selecionados</button>
-                  <button onclick="enviar('list -a')">Listar Roteadores (APs)</button>
-                  <button onclick="enviar('list -c')">Listar Clientes</button>
-                  <button onclick="enviar('select -a ' + prompt('ID do Roteador (AP):'))">Selecionar Roteador</button>
-                  <button onclick="enviar('select -c ' + prompt('ID do Cliente:'))">Selecionar Cliente</button>
-                  <button onclick="enviar('select -s ' + prompt('ID da Estação:'))">Selecionar Estação</button>
-                  <button onclick="enviar('ssid -a -n ' + prompt('Nome da Rede Falsa:'))">Adicionar SSID Falso</button>
-                  <button onclick="enviar('ssid -r ' + prompt('Índice do SSID para remover:'))">Remover SSID Falso</button>
-                  <div class="grid">
-                      <button onclick="enviar('save -a')">Salvar APs</button>
-                      <button onclick="enviar('save -s')">Salvar Stations</button>
-                      <button onclick="enviar('load -a')">Carregar APs</button>
-                      <button onclick="enviar('load -s')">Carregar Stations</button>
-                  </div>
-                  <button class="btn-back" onclick="showScreen('main-menu')">Voltar</button>
-              </div>
-
-              <div id="menu-sniffing" class="menu-screen">
-                  <h2>4. CAPTURA DE PACOTES (SNIFFING)</h2>
-                  <button onclick="enviar('sniffraw')">Sniff Raw (Bruto)</button>
-                  <button onclick="enviar('sniffbeacon')">Sniff Beacon</button>
-                  <button onclick="enviar('sniffprobe')">Sniff Probe</button>
-                  <button onclick="enviar('sniffpwn')">Sniff Pwnagotchi</button>
-                  <button onclick="enviar('sniffesp')">Sniff ESP</button>
-                  <button onclick="enviar('sniffdeauth')">Sniff Deauths (Defensivo)</button>
-                  <button onclick="enviar('sniffpmkid')">Sniff PMKID</button>
-                  <button class="btn-back" onclick="showScreen('main-menu')">Voltar</button>
-              </div>
-
-              <div id="menu-monitor" class="menu-screen">
-                  <h2>5. MONITORAMENTO E ESCUTA</h2>
-                  <button onclick="enviar('sigmon')">Monitor de Sinal (Gráfico)</button>
-                  <button onclick="enviar('scanap')">Escanear Roteadores (APs)</button>
-                  <button onclick="enviar('scansta')">Escanear Clientes (Stations)</button>
-                  <button onclick="enviar('wardrive -s')">Iniciar Wardriving</button>
-                  <button style="background:#550000; border-color:#ff0000;" onclick="enviar('stopscan')">🛑 PARAR ESCANEAMENTO</button>
-                  <button class="btn-back" onclick="showScreen('main-menu')">Voltar</button>
-              </div>
-
-              <div id="menu-gps" class="menu-screen">
-                  <h2>6. COMANDOS DE GPS</h2>
-                  <button onclick="enviar('gpsdata')">Dados GPS Crus</button>
-                  <button onclick="enviar('gps -g')">Exibir Coordenadas Precisas</button>
-                  <button onclick="enviar('nmea')">Formato Padrão NMEA</button>
-                  <button class="btn-back" onclick="showScreen('main-menu')">Voltar</button>
-              </div>
-
-              <div id="menu-sistema" class="menu-screen">
-                  <h2>7. SISTEMA E CONFIGURAÇÃO</h2>
-                  <button onclick="enviar('channel -s ' + prompt('Digite o número do Canal (1 a 14):'))">Mudar Canal Wi-Fi</button>
-                  <button onclick="enviar('settings')">Exibir Configurações</button>
-                  <div class="grid">
-                      <button onclick="enviar('clearlist -a')">Limpar APs</button>
-                      <button onclick="enviar('clearlist -c')">Limpar Clientes</button>
-                  </div>
-                  <button onclick="enviar('ls')">Listar Arquivos do Cartão SD</button>
-                  <button onclick="enviar('led -p arco-íris')">Efeito LED Arco-íris</button>
-                  <button onclick="enviar('update -w')">Atualizar via Web (Update)</button>
-                  <button style="background:#775500;" onclick="enviar('reboot')">🔄 REINICIAR PLACA (Reboot)</button>
-                  <button class="btn-back" onclick="showScreen('main-menu')">Voltar</button>
-              </div>
-
               <script type="text/javascript" src="cordova.js"></script>
               <script>
-                  // Função para gerenciar a troca de interfaces
                   function showScreen(screenId) {
-                      var screens = document.getElementsByClassName('menu-screen');
-                      for (var i = 0; i < screens.length; i++) {
-                          screens[i].style.display = 'none';
-                      }
+                      document.querySelectorAll('.menu-screen').forEach(s => s.style.display = 'none');
                       document.getElementById(screenId).style.display = 'block';
                   }
-
-                  // Função de Conexão com solicitação de permissão nativa
                   function conectar() {
                       if (window.serial) {
                           window.serial.requestPermission(
@@ -213,23 +102,14 @@ jobs:
                                       function() { alert("Conectado com sucesso!"); }, 
                                       function(err) { alert("Erro ao abrir porta: " + err); });
                               }, 
-                              function error(err) { alert("Permissão negada ou sem dispositivo: " + err); }
+                              function error(err) { alert("Permissão negada: " + err); }
                           );
-                      } else {
-                          alert("Plugin Serial não carregado!");
-                      }
+                      } else { alert("Plugin Serial não carregado!"); }
                   }
-
-                  // Função única para envio de comandos via serial
                   function enviar(comando) {
                       if (window.serial) {
-                          window.serial.write(comando + "\n", 
-                              function() { console.log("Comando enviado: " + comando); }, 
-                              function(err) { alert("Erro ao enviar: " + err + ". Reconecte o cabo."); }
-                          );
-                      } else {
-                          alert("Aparelho não conectado. Clique em CONECTAR USB primeiro.");
-                      }
+                          window.serial.write(comando + "\n", function() {}, function(err) { alert("Erro: " + err); });
+                      } else { alert("Conecte o USB primeiro!"); }
                   }
               </script>
           </body>
@@ -238,7 +118,6 @@ jobs:
 
           echo "Adicionando plataforma Android..."
           cordova platform add android@13.0.0 || { echo "Falha ao adicionar plataforma"; exit 1; }
-
           echo "Iniciando build final..."
           cordova build android -- --no-daemon || { echo "Falha no build do Cordova"; exit 1; }
 
