@@ -3,7 +3,7 @@ name: Compilar MarauderApp APK
 sobre :
   workflow_dispatch
   
-function conectar() 
+function conectar() {
     if (window.serial) {
         // 1. Solicita a permissão nativa do Android para usar o USB
         window.serial.requestPermission(
